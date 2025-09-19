@@ -1,0 +1,20 @@
+#!/bin/bash
+
+if [[ "$1" =~ [[:\<:]](PIN|passphrase)[[:\>:]] ]]; then
+	pinentry-mac <<-EOF | sed -n 's/^D //p'
+		SETTITLE ssh-askpass
+		SETDESC ${1//$'\n'/%0A}
+		SETPROMPT
+		$([[ "$1" =~ SHA256:([^:]+) ]] && echo "SETKEYINFO ${BASH_REMATCH[1]}")
+		OPTION allow-external-password-cache
+		GETPIN
+	EOF
+elif [[ "$SSH_ASKPASS_PROMPT" != 'none' ]]; then
+	pinentry-mac <<-EOF | grep -q '^ERR' && echo 'No' || echo 'Yes'
+		SETTITLE ssh-askpass
+		SETDESC ${1//$'\n'/%0A}
+		SETOK Yes
+		SETCANCEL No
+		CONFIRM
+	EOF
+fi
