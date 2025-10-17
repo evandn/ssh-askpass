@@ -1,6 +1,6 @@
 #!/bin/bash
 
-MSG="${1//$'\n'/%0A}"
+MSG=${1//$'\n'/%0A}
 
 INP=$(
 	cat <<-EOF
@@ -9,20 +9,20 @@ INP=$(
 	EOF
 )
 
-if [[ "$MSG" =~ [[:\<:]]([Pp]ass(phrase|word)|PIN)[[:\>:]] ]]; then
-	if [[ "${MSG// \(will confirm each use\)/}" =~ passphrase\ for\ ([^:]+) ]]; then
-		MSG="$(ssh-keygen -lf "$(realpath "${BASH_REMATCH[1]}")")"
+if [[ $MSG =~ [[:\<:]]([Pp]ass(phrase|word)|PIN)[[:\>:]] ]]; then
+	if [[ $(sed -E "s/ \(.+\)//;s/[^ ]+ '//" <<<$MSG) =~ pass.+for\ ([^\':]+) ]]; then
+		MSG=$(ssh-keygen -lf "$(realpath "${BASH_REMATCH[1]}")")
 	fi
 
 	pinentry-mac <<-EOF | sed -n 's/^D //p'
 		$INP
 		SETPROMPT
-		$([[ "$MSG" =~ SHA256:([^[:space:]:]+) ]] && echo "SETKEYINFO ${BASH_REMATCH[1]}")
+		$(sed -En 's/.*SHA256:([^ :]+).*/SETKEYINFO \1/p' <<<$MSG)
 		OPTION allow-external-password-cache
 		GETPIN
 	EOF
-elif [[ "$SSH_ASKPASS_PROMPT" != 'none' ]]; then
-	pinentry-mac <<-EOF | grep -q '^ERR' && echo 'No' || echo 'Yes'
+elif [[ $SSH_ASKPASS_PROMPT != none ]]; then
+	pinentry-mac <<-EOF | grep -q '^ERR' && echo No || echo Yes
 		$INP
 		SETOK Yes
 		SETCANCEL No
